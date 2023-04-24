@@ -1,6 +1,5 @@
 # Trend1
 
 streamlit
-pandas_datareader
 pandas
-datetime
+yfinance
