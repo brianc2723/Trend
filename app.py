@@ -1,49 +1,58 @@
-import yfinance as yf
 import streamlit as st
+import yfinance as yf
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# 设置页面标题
 st.title('Stock Comparison App')
 
-# 添加用户输入
-col1, col2 = st.beta_columns(2)
-with col1:
-    stock1 = st.text_input('请输入第一支股票代码（例如AAPL）：')
-with col2:
-    stock2 = st.text_input('请输入第二支股票代码（例如AMZN）：')
+# User input
+ticker1 = st.text_input('Enter the first ticker:')
+ticker2 = st.text_input('Enter the second ticker:')
+time_frame = st.selectbox('Select the time frame:', ('日K线', '月K线', '年K线'))
 
-# 添加用户选择
-time_frame = st.radio("请选择时间周期：", ("日K线", "月K线", "年K线"))
+# Retrieve data from Yahoo finance
+start_date = '2010-01-01'
+end_date = '2023-4-23'
 
-# 获取数据并绘图
-@st.cache
-def get_data(stock1, stock2):
-    ticker1 = yf.Ticker(stock1)
-    ticker2 = yf.Ticker(stock2)
-    df1 = ticker1.history(period="max")
-    df2 = ticker2.history(period="max")
-    return df1, df2
+data1 = yf.download(ticker1, start=start_date, end=end_date)
+data2 = yf.download(ticker2, start=start_date, end=end_date)
 
-df1, df2 = get_data(stock1, stock2)
+df1 = pd.DataFrame(data1['Adj Close'])
+df2 = pd.DataFrame(data2['Adj Close'])
 
+# Resample data based on selected time frame
 if time_frame == '日K线':
-    df1 = df1.resample('D').mean().dropna()
-    df2 = df2.resample('D').mean().dropna()
+    df1.index = pd.to_datetime(df1.index)
+    df2.index = pd.to_datetime(df2.index)
 elif time_frame == '月K线':
-    df1 = df1.resample('M').mean().dropna()
-    df2 = df2.resample('M').mean().dropna()
+    df1.index = pd.to_datetime(df1.index).to_period('M')
+    df2.index = pd.to_datetime(df2.index).to_period('M')
 else:
-    df1 = df1.resample('Y').mean().dropna()
-    df2 = df2.resample('Y').mean().dropna()
+    df1.index = pd.to_datetime(df1.index).to_period('Y')
+    df2.index = pd.to_datetime(df2.index).to_period('Y')
 
-if len(df1) == 0 or len(df2) == 0:
-    st.write("输入的股票代码有误，请重新输入！")
-else:
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.plot(df1.index, df1['Close']/df1['Close'][0], label=stock1)
-    ax.plot(df2.index, df2['Close']/df2['Close'][0], label=stock2)
-    ax.set_xlabel('时间')
-    ax.set_ylabel('股票价格相对初始值的比例')
-    ax.legend(loc='best')
-    st.pyplot(fig)
+df1 = df1.mean(level=0)
+df2 = df2.mean(level=0)
+
+# Compare stock price trends
+st.write('### Stock Price Comparison')
+fig, ax = plt.subplots()
+ax.plot(df1.index, df1.values, label=ticker1)
+ax.plot(df2.index, df2.values, label=ticker2)
+ax.set_xlabel('Year')
+ax.set_ylabel('Adjusted Close Price ($)')
+ax.legend()
+st.pyplot(fig)
+
+# Calculate and compare stock returns
+returns1 = df1.pct_change()
+returns2 = df2.pct_change()
+
+st.write('### Stock Return Comparison')
+fig, ax = plt.subplots()
+ax.plot(returns1.index, returns1.values, label=ticker1)
+ax.plot(returns2.index, returns2.values, label=ticker2)
+ax.set_xlabel('Year')
+ax.set_ylabel('Return')
+ax.legend()
+st.pyplot(fig)
