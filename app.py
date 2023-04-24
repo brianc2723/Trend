@@ -44,6 +44,9 @@ def plot_data():
     df1 = df1.resample('D').last().ffill().pct_change().dropna()
     df2 = df2.resample('D').last().ffill().pct_change().dropna()
 
+    df1.index = pd.to_datetime(df1.index)
+    df2.index = pd.to_datetime(df2.index)
+
     sns.set(style="darkgrid", palette="bright", font_scale=1.5)
     plt.figure(figsize=(20,10))
     plt.plot(df1, label='BRK-B')
@@ -56,6 +59,7 @@ def plot_data():
 
     df1 = df1.resample('M').mean().dropna()
     df2 = df2.resample('M').mean().dropna()
+
     sns.set(style="darkgrid", palette="bright", font_scale=1.5)
     plt.figure(figsize=(20,10))
     plt.plot(df1, label='BRK-B')
@@ -68,6 +72,7 @@ def plot_data():
 
     df1 = df1.resample('Y').mean().dropna()
     df2 = df2.resample('Y').mean().dropna()
+
     sns.set(style="darkgrid", palette="bright", font_scale=1.5)
     plt.figure(figsize=(20,10))
     plt.plot(df1, label='BRK-B')
@@ -81,4 +86,6 @@ def plot_data():
 if __name__ == '__main__':
     st.set_page_config(page_title="Stock Comparison App")
     st.title("Stock Comparison App")
-    st.write("This app compares the daily, monthly, and yearly returns of Berkshire Hathaway (BRK-B) and Tesla (TSL
+    st.write("This app compares the daily, monthly, and yearly returns of Berkshire Hathaway (BRK-B) and Tesla (TSLA).")
+    plot_data()
+    Watcher().run()
