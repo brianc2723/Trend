@@ -59,7 +59,7 @@ def main():
 
     # Compare stock prices
     comparison = df1.to_frame(name='BRK-B').join(df2.to_frame(name='TSLA')).dropna()
-    comparison['BRK-B/TSLA'] = comparison['BRK.B'] / comparison['TSLA']
+    comparison['BRK-B/TSLA'] = comparison['BRK-B'] / comparison['TSLA']
 
     # Show comparison chart
     st.line_chart(comparison[['BRK-B', 'TSLA']])
