@@ -1,0 +1,38 @@
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+
+st.title("Stock Comparison App")
+
+# Create a list of stock symbols for selection
+stocks = ('AAPL', 'GOOG', 'MSFT', 'AMZN')
+selected_stock = st.selectbox("Select a stock for comparison", stocks)
+
+# Set date range
+start_date = st.date_input("Start date", value=pd.to_datetime('2020-01-01'), min_value=pd.to_datetime('2010-01-01'), max_value=pd.to_datetime('2023-12-31'))
+end_date = st.date_input("End date", value=pd.to_datetime('today'), min_value=start_date, max_value=pd.to_datetime('2023-12-31'))
+
+# Set frequency
+freq = st.selectbox("Select a frequency", ('1d', '1mo', '1y'))
+
+# Get stock data from Yahoo finance
+stock_data = yf.download(selected_stock, start=start_date, end=end_date, interval=freq)
+
+# Calculate percentage change for each stock
+stock_data_pct = stock_data.pct_change()
+
+# Create a line chart for the selected stock and its percentage change
+st.line_chart(stock_data["Close"], use_container_width=True)
+st.line_chart(stock_data_pct["Close"], use_container_width=True)
+
+# Create a table to display the percentage change for all selected stocks
+compare_stocks = st.checkbox("Compare multiple stocks")
+if compare_stocks:
+    stock_list = st.multiselect("Select stocks for comparison", stocks)
+    if stock_list:
+        stock_data_compare = pd.DataFrame()
+        for stock in stock_list:
+            temp_data = yf.download(stock, start=start_date, end=end_date, interval=freq)
+            temp_data_pct = temp_data.pct_change()
+            stock_data_compare[stock] = temp_data_pct["Close"]
+        st.table(stock_data_compare.style.highlight_max(axis=0))
