@@ -1,54 +1,70 @@
 import yfinance as yf
-import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
-import seaborn as sns
+import pandas as pd
 
-st.set_option('deprecation.showPyplotGlobalUse', False)
+# Set page title
+st.set_page_config(page_title="Stock Comparison App")
 
-st.write("""
-# 股票升跌幅度比较
-""")
+# Define function to get stock data
+@st.cache
+def get_data(tickers, start_date, end_date):
+    """
+    This function gets stock data from Yahoo Finance API
+    """
+    data = yf.download(tickers=tickers, start=start_date, end=end_date)
+    return data
 
-# 股票代码输入
-expander = st.beta_expander("输入股票代码")
-with expander:
-    option = st.selectbox('选择数据源', ('yahoo', 'google'))
-    stock1 = st.text_input("输入第一只股票代码", 'BRK-B')
-    stock2 = st.text_input("输入第二只股票代码", 'TSLA')
+# Define function to plot stock data
+def plot_data(df1, df2):
+    """
+    This function plots the stock data
+    """
+    # Calculate returns
+    df1['Returns'] = df1['Close'].pct_change()
+    df2['Returns'] = df2['Close'].pct_change()
 
-# 时间周期选择
-time_frame = st.sidebar.selectbox('选择时间周期', ('日K线', '月K线', '年K线'))
+    # Calculate cumulative returns
+    df1['Cumulative Returns'] = (1 + df1['Returns']).cumprod()
+    df2['Cumulative Returns'] = (1 + df2['Returns']).cumprod()
 
-# 获取数据
-data = yf.download([stock1, stock2], period='max', interval='1d', group_by='ticker', auto_adjust=True, prepost=True, threads=True, proxy=None)
+    # Plot cumulative returns
+    fig1 = df1['Cumulative Returns'].plot(title=ticker1 + ' Cumulative Returns', label=ticker1)
+    df2['Cumulative Returns'].plot(title=ticker2 + ' Cumulative Returns', label=ticker2)
+    fig1.set_xlabel("Date")
+    fig1.set_ylabel("Cumulative Returns")
 
-# 获取两只股票的涨跌幅
-df1 = pd.DataFrame(data[stock1]['Close'].pct_change())
-df2 = pd.DataFrame(data[stock2]['Close'].pct_change())
+    # Plot daily returns
+    fig2 = df1['Returns'].plot(title=ticker1 + ' Daily Returns', label=ticker1)
+    df2['Returns'].plot(title=ticker2 + ' Daily Returns', label=ticker2)
+    fig2.set_xlabel("Date")
+    fig2.set_ylabel("Daily Returns")
 
-# 根据时间周期重采样数据
+# Set page title
+st.title("Stock Comparison App")
+
+# Define sidebar inputs
+st.sidebar.title("Inputs")
+ticker1 = st.sidebar.text_input("Enter first ticker (e.g. BRK.B)", value="BRK.B")
+ticker2 = st.sidebar.text_input("Enter second ticker (e.g. TSLA)", value="TSLA")
+start_date = st.sidebar.date_input("Start date", value=pd.to_datetime("2020-01-01"))
+end_date = st.sidebar.date_input("End date", value=pd.to_datetime("today"))
+time_frame = st.sidebar.selectbox("Select time frame", ["日K线", "月K线", "年K线"])
+
+# Get stock data
+data = get_data([ticker1, ticker2], start_date, end_date)
+
+# Select data based on time frame
 if time_frame == '日K线':
-    df1 = df1.resample('D').mean().dropna()
-    df2 = df2.resample('D').mean().dropna()
+    data = data.resample('D').mean().dropna()
 elif time_frame == '月K线':
-    df1 = df1.resample('M').mean().dropna()
-    df2 = df2.resample('M').mean().dropna()
+    data = data.resample('M').mean().dropna()
 else:
-    df1 = df1.resample('Y').mean().dropna()
-    df2 = df2.resample('Y').mean().dropna()
+    data = data.resample('Y').mean().dropna()
 
-# 绘制折线图
-fig, ax = plt.subplots()
-sns.lineplot(data=df1, ax=ax, label=stock1)
-sns.lineplot(data=df2, ax=ax, label=stock2)
-ax.set(xlabel='日期', ylabel='涨跌幅', title=f'{stock1}与{stock2}涨跌幅比较 ({time_frame})')
-st.pyplot(fig)
+# Split data for each ticker
+df1 = pd.DataFrame(data[ticker1])
+df2 = pd.DataFrame(data[ticker2])
 
-# 绘制条形图
-diff = (df1 - df2).dropna()
-fig, ax = plt.subplots()
-sns.barplot(data=diff, ax=ax)
-ax.set(xlabel='日期', ylabel='涨跌幅差', title=f'{stock1}与{stock2}涨跌幅差比较 ({time_frame})')
-st.pyplot(fig)
-
+# Plot data
+plot_data(df1, df2)
+st.pyplot()
