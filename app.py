@@ -1,71 +1,54 @@
-import streamlit as st
-import pandas as pd
 import yfinance as yf
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
+import pandas as pd
+import streamlit as st
+import matplotlib.pyplot as plt
+import seaborn as sns
 
+st.set_option('deprecation.showPyplotGlobalUse', False)
 
-class StockWatcher(FileSystemEventHandler):
-    def __init__(self):
-        self.df1 = None
-        self.df2 = None
+st.write("""
+# 股票升跌幅度比较
+""")
 
-    def on_modified(self, event):
-        self.load_data()
+# 股票代码输入
+expander = st.beta_expander("输入股票代码")
+with expander:
+    option = st.selectbox('选择数据源', ('yahoo', 'google'))
+    stock1 = st.text_input("输入第一只股票代码", 'BRK-B')
+    stock2 = st.text_input("输入第二只股票代码", 'TSLA')
 
-    def load_data(self):
-        try:
-            ticker1 = 'BRK-B'
-            ticker2 = 'TSLA'
-            df1 = yf.download(ticker1, period='max')
-            df2 = yf.download(ticker2, period='max')
-            if not df1.empty and not df2.empty:
-                self.df1 = df1['Close']
-                self.df2 = df2['Close']
-        except:
-            pass
+# 时间周期选择
+time_frame = st.sidebar.selectbox('选择时间周期', ('日K线', '月K线', '年K线'))
 
+# 获取数据
+data = yf.download([stock1, stock2], period='max', interval='1d', group_by='ticker', auto_adjust=True, prepost=True, threads=True, proxy=None)
 
-def main():
-    # Watch file changes
-    observer = Observer()
-    event_handler = StockWatcher()
-    observer.schedule(event_handler, '.', recursive=False)
-    observer.start()
+# 获取两只股票的涨跌幅
+df1 = pd.DataFrame(data[stock1]['Close'].pct_change())
+df2 = pd.DataFrame(data[stock2]['Close'].pct_change())
 
-    # Load initial data
-    event_handler.load_data()
+# 根据时间周期重采样数据
+if time_frame == '日K线':
+    df1 = df1.resample('D').mean().dropna()
+    df2 = df2.resample('D').mean().dropna()
+elif time_frame == '月K线':
+    df1 = df1.resample('M').mean().dropna()
+    df2 = df2.resample('M').mean().dropna()
+else:
+    df1 = df1.resample('Y').mean().dropna()
+    df2 = df2.resample('Y').mean().dropna()
 
-    # Streamlit app
-    st.title('Stock Comparison')
+# 绘制折线图
+fig, ax = plt.subplots()
+sns.lineplot(data=df1, ax=ax, label=stock1)
+sns.lineplot(data=df2, ax=ax, label=stock2)
+ax.set(xlabel='日期', ylabel='涨跌幅', title=f'{stock1}与{stock2}涨跌幅比较 ({time_frame})')
+st.pyplot(fig)
 
-    if event_handler.df1 is None or event_handler.df2 is None:
-        st.write('Loading data...')
-        return
-
-    # Choose time frame
-    time_frame = st.selectbox('Time Frame', ['日K线', '月K线', '年K线'])
-
-    # Resample data according to time frame
-    if time_frame == '日K线':
-        df1 = event_handler.df1.resample('D').mean().dropna()
-        df2 = event_handler.df2.resample('D').mean().dropna()
-    elif time_frame == '月K线':
-        df1 = event_handler.df1.resample('M').mean().dropna()
-        df2 = event_handler.df2.resample('M').mean().dropna()
-    else:
-        df1 = event_handler.df1.resample('Y').mean().dropna()
-        df2 = event_handler.df2.resample('Y').mean().dropna()
-
-    # Compare stock prices
-    comparison = df1.to_frame(name='BRK-B').join(df2.to_frame(name='TSLA')).dropna()
-    comparison['BRK-B/TSLA'] = comparison['BRK-B'] / comparison['TSLA']
-
-    # Show comparison chart
-    st.line_chart(comparison[['BRK-B', 'TSLA']])
-    st.line_chart(comparison['BRK-B/TSLA'])
-
-
-if __name__ == '__main__':
-    main()
+# 绘制条形图
+diff = (df1 - df2).dropna()
+fig, ax = plt.subplots()
+sns.barplot(data=diff, ax=ax)
+ax.set(xlabel='日期', ylabel='涨跌幅差', title=f'{stock1}与{stock2}涨跌幅差比较 ({time_frame})')
+st.pyplot(fig)
 
