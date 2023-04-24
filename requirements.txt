@@ -1,0 +1,6 @@
+# Trend1
+
+streamlit
+pandas
+yfinance
+matplotlib
