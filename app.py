@@ -6,8 +6,8 @@ st.title('Keyword Tracker')
 keyword = st.text_input("Enter a keyword to track:")
 
 if keyword:
-    # Initialize TrendReq with a user-agent header
-    pytrend = TrendReq(request_args={'headers': {'User-Agent': 'Mozilla/5.0'}})
+    # Initialize TrendReq without request_args
+    pytrend = TrendReq(hl='en-US', tz=360)  # Specify language and timezone
 
     # Build payload for the keyword
     pytrend.build_payload(kw_list=[keyword])
@@ -32,3 +32,4 @@ if keyword:
                 st.error("Failed to fetch data after several attempts. Please try again later.")
 else:
     st.write("Please enter a keyword to track.")
+
