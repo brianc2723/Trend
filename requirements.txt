@@ -1,6 +1,4 @@
-yfinance
-pandas
 streamlit
-matplotlib
-seaborn
-watchdog
+pytrends
+pandas
+numpy
