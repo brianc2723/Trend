@@ -1,35 +1,58 @@
 import streamlit as st
 from pytrends.request import TrendReq
-import time
+import pandas as pd
+import requests
 
-st.title('Keyword Tracker')
+# Initialize Pytrends
+pytrend = TrendReq()
+
+# Function to fetch Google Trends data
+def fetch_trends(keyword):
+    pytrend.build_payload(kw_list=[keyword])
+    data = pytrend.interest_over_time()
+    return data
+
+# Function to fetch news articles from Google News API
+def fetch_news(query):
+    api_key = 'YOUR_NEWS_API_KEY'  # Replace with your actual News API key
+    url = f'https://newsapi.org/v2/everything?q={query}&apiKey={api_key}'
+    response = requests.get(url)
+    return response.json()
+
+# Streamlit UI setup
+st.title('Keyword Tracker with AI Chatbot and News')
+
+# Keyword input for Google Trends
 keyword = st.text_input("Enter a keyword to track:")
 
 if keyword:
-    # Initialize TrendReq without request_args
-    pytrend = TrendReq(hl='en-US', tz=360)  # Specify language and timezone
+    trends_data = fetch_trends(keyword)
+    if not trends_data.empty:
+        st.line_chart(trends_data[keyword])
+    else:
+        st.write("No data found for this keyword.")
 
-    # Build payload for the keyword
-    pytrend.build_payload(kw_list=[keyword])
+    # Fetch and display news articles related to the keyword
+    news_data = fetch_news(keyword)
+    if news_data['status'] == 'ok':
+        articles = news_data['articles']
+        for article in articles[:5]:  # Display top 5 articles
+            st.subheader(article['title'])
+            st.write(article['description'])
+            st.write(f"[Read more]({article['url']})")
+    else:
+        st.write("Failed to fetch news articles.")
+
+# Ollama Chatbot Integration (Basic Example)
+st.subheader('Chat with our AI')
+user_input = st.text_input("Ask something:")
+if user_input:
+    # Here you would call your Ollama model API or function to get a response.
+    # For example:
+    # response = ollama_chatbot.get_response(user_input)
     
-    # Retry logic
-    retries = 5
-    for attempt in range(retries):
-        try:
-            # Fetch interest over time
-            data = pytrend.interest_over_time()
-            if not data.empty:
-                st.write('You are tracking:', keyword)
-                st.line_chart(data[keyword])
-            else:
-                st.write("No data found for this keyword.")
-            break  # Exit loop if successful
-        except Exception as e:
-            if attempt < retries - 1:  # If not the last attempt
-                st.warning(f"Attempt {attempt + 1} failed. Retrying...")
-                time.sleep(5)  # Wait before retrying
-            else:
-                st.error("Failed to fetch data after several attempts. Please try again later.")
-else:
-    st.write("Please enter a keyword to track.")
+    # Placeholder response for demonstration purposes.
+    response = "This is where the AI's response will appear."
+    
+    st.write(f"AI: {response}")
 
